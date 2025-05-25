@@ -1,3 +1,4 @@
+import { upsertStreamUser } from "../lib/stream.js";
 import User from "../models/User.js";
 import jwt from "jsonwebtoken";
 
@@ -32,7 +33,6 @@ export const Signup = async (req, res) => {
             })
         }
         // Create image URL for the user avatar
-        // Generate a random index for the user avatar
         const idx = Math.floor(Math.random() * 100) + 1; // Generate a random index for the user avatar
         const randomAvatar = `https://avatar.iran.liara.run/public/${idx}.png`; // Use the random index to get a random avatar
 
@@ -40,6 +40,21 @@ export const Signup = async (req, res) => {
         const newUser = await User.create({
             email, password, fullName, profilePic: randomAvatar
         })
+
+        // If the user is created successfully, upsert the user in Stream
+        try {
+            await upsertStreamUser({
+                id: newUser._id.toString(), name: newUser.fullName,
+                image: newUser.ProfilePic || "",
+            });
+            console.log(`Stream user upserted successfully for user ID : ${newUser.fullName}`);
+        } catch (error) {
+            console.error("Error upserting Stream user:", error);
+            return res.status(500).json({
+                message: "Failed to upsert Stream user",
+                error: error.message
+            });
+        }
 
         // Create the token for the user
         const token = jwt.sign({
@@ -117,4 +132,10 @@ export const Login = async (req, res) => {
     }
 }
 
-export const Logout = (res, req) => { }
+export const Logout = (req, res) => {
+    res.clearCookie("token");
+    res.status(200).json({
+        success: true,
+        message: "Logged out successfully"
+    });
+}
