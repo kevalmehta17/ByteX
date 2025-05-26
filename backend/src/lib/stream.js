@@ -18,7 +18,7 @@ export const upsertStreamUser = async (userData) => {
         await streamClient.upsertUsers([userData]);
         return userData;
     } catch (error) {
-        console.error('Error upserting Stream user:', error);
+        console.error('Error in upsert Stream user:', error);
         throw new Error('Failed to upsert Stream user');
     }
 }
