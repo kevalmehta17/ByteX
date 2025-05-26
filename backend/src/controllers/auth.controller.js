@@ -45,11 +45,11 @@ export const Signup = async (req, res) => {
         try {
             await upsertStreamUser({
                 id: newUser._id.toString(), name: newUser.fullName,
-                image: newUser.ProfilePic || "",
+                image: newUser.profilePic || "",
             });
-            console.log(`Stream user upserted successfully for user ID : ${newUser.fullName}`);
+            console.log(`Stream user upsert successfully for user ID : ${newUser.fullName}`);
         } catch (error) {
-            console.error("Error upserting Stream user:", error);
+            console.error("Error in upsert Stream user:", error);
             return res.status(500).json({
                 message: "Failed to upsert Stream user",
                 error: error.message
@@ -80,6 +80,7 @@ export const Signup = async (req, res) => {
 
     }
 }
+
 export const Login = async (req, res) => {
     const { email, password } = req.body;
     try {
@@ -138,4 +139,59 @@ export const Logout = (req, res) => {
         success: true,
         message: "Logged out successfully"
     });
+}
+
+export const Onboarding = async (req, res) => {
+    try {
+        const id = req.user._id; // Get the user ID from the request object
+
+        const { fullName, bio, nativeLanguage, learningLanguage, location } = req.body;
+
+        if (!fullName || !bio || !nativeLanguage || !learningLanguage || !location) {
+            return res.status(400).json({
+                message: "Please provide all required fields",
+                missingFields:
+                    [
+                        !fullName && "fullName",
+                        !bio && "bio",
+                        !nativeLanguage && "nativeLanguage",
+                        !learningLanguage && "learningLanguage",
+                        !location && "location"
+                    ].filter(Boolean)
+            });
+        }
+        const updatedUser = await User.findByIdAndUpdate(id, {
+            ...req.body,
+            isOnboarded: true
+        }, { new: true });
+
+        if (!updatedUser) {
+            return res.status(404).json({
+                message: "User not found"
+            });
+        }
+        // If the user is onboarded successfully, upsert the user in Stream
+        try {
+            await upsertStreamUser({
+                id: updatedUser._id.toString(),
+                name: updatedUser.fullName,
+                image: updatedUser.profilePic || "",
+            })
+            console.log(`Stream user upsert successfully for user ID : ${updatedUser.fullName}`);
+        } catch (error) {
+            console.error("Error in upsert Stream user:", error);
+            return res.status(500).json({
+                message: "Failed to upsert Stream user",
+                error: error.message
+            })
+        }
+
+        res.status(200).json({
+            success: true,
+            user: updatedUser
+        })
+
+    } catch (error) {
+
+    }
 }
