@@ -180,3 +180,24 @@ export const getFriendRequests = async (req, res) => {
 
     }
 }
+
+export const getOutgoingFriendRequests = async (req, res) => {
+    try {
+        //Fetch all outgoing friend requests sent by the current user
+        const outgoingRequests = await FriendRequest.find({
+            sender: req.user._id, // current user's ID
+            status: "pending"
+        }).populate({
+            path: "recipient",
+            select: "fullName profilePic nativeLanguage learningLanguage"
+        });
+        res.status(200).json({ outgoingRequests });
+    } catch (error) {
+        console.error("Error in getOutgoingFriendRequests:", error.message);
+        res.status(500).json({
+            success: false,
+            message: "Internal server error",
+            error: error.message
+        });
+    }
+}
