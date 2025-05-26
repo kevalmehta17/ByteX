@@ -13,6 +13,7 @@ router.post("/logout", Logout)
 
 router.post("/onboarding", ProtectRoute, Onboarding);
 
+// check if the user is logged in
 router.get("/me", ProtectRoute, (req, res) => {
     res.status(200).json({
         success: true,
