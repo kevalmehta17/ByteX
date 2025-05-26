@@ -106,3 +106,77 @@ export const sendFriendRequest = async (req, res) => {
         });
     }
 }
+
+export const acceptFriendRequest = async (req, res) => {
+    try {
+        const { id: requestId } = req.params;
+
+        // Find the friend request
+        const friendRequest = await FriendRequest.findById(requestId);
+        if (!friendRequest) {
+            return res.status(404).json({
+                message: "Friend request not found"
+            });
+        }
+        // Check if the current user is the recipient of the request
+        if (friendRequest.recipient.toString() !== req.user._id.toString()) {
+            return res.status(403).json({
+                message: "You are not authorized to accept this friend request"
+            });
+        }
+        // Update the friend request status to accepted
+        friendRequest.status = "accepted";
+        await friendRequest.save();
+
+        // Add each user to the other's friends list
+        //$addToSet: adds the value to the array only if it doesn't already exist
+        await User.findByIdAndUpdate(friendRequest.sender, {
+            $addToSet: { friends: friendRequest.recipient }
+        });
+        await User.findByIdAndUpdate(friendRequest.recipient, {
+            $addToSet: { friends: friendRequest.sender }
+        });
+        res.status(200).json({
+            message: "Friend request accepted successfully",
+            friendRequest
+        })
+    } catch (error) {
+        console.error("Error in acceptFriendRequest:", error.message);
+        res.status(500).json({
+            success: false,
+            message: "Internal server error",
+            error: error.message
+        });
+    }
+}
+
+export const getFriendRequests = async (req, res) => {
+    try {
+        // Fetch all incoming friend requests for the current user
+        const incomingRequests = await FriendRequest.find({
+            recipient: req.user._id, // current user's ID
+            status: "pending"
+        }).populate({
+            path: "sender",
+            select: "fullName profilePic nativeLanguage learningLanguage"
+        })
+
+        // Display the previously accepted friend requests
+        const acceptedRequest = await FriendRequest.find({
+            recipient: req.user._id,
+            status: "accepted"
+        }).populate({
+            path: "sender",
+            select: "fullName profilePic"
+        })
+        res.status(200).json({ incomingRequests, acceptedRequest });
+    } catch (error) {
+        console.error("Error in getFriendRequests:", error.message);
+        res.status(500).json({
+            success: false,
+            message: "Internal server error",
+            error: error.message
+        });
+
+    }
+}
